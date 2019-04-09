@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "641680688730",
+    "firebase_url": "https://barcodesample-5e1ce.firebaseio.com",
+    "project_id": "barcodesample-5e1ce",
+    "storage_bucket": "barcodesample-5e1ce.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:641680688730:android:0cc765f37934d2c7",
+        "android_client_info": {
+          "package_name": "example.gaurav.mlkit.barcode"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "641680688730-b8kj2ct7gj9qlne3t2d8fmmtiv1ssg50.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRu4PPeUsXodZCdo19h_VpEtdNfuovhQw"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

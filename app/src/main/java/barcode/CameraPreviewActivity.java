@@ -2,12 +2,10 @@ package barcode;
 
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
-import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,12 +22,6 @@ import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-import com.cognex.dataman.sdk.CameraMode;
-import com.cognex.dataman.sdk.ConnectionState;
-import com.cognex.dataman.sdk.PreviewOption;
-import com.cognex.mobile.barcode.sdk.ReadResult;
-import com.cognex.mobile.barcode.sdk.ReadResults;
-import com.cognex.mobile.barcode.sdk.ReaderDevice;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.ml.vision.FirebaseVision;
@@ -39,7 +31,6 @@ import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOption
 import com.google.firebase.ml.vision.common.FirebaseVisionImage;
 import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -61,13 +52,15 @@ public class CameraPreviewActivity extends AppCompatActivity {
     ObjectAnimator animator = null;
     View scannerBar;
     RelativeLayout mDetectionBox = null;
+    private int frameCount = 0;
+    private boolean processFrame = true;
 
     boolean isScanning = false;
 
 
 
     private interface OnBarcodeListener {
-        void onIsbnDetected(FirebaseVisionBarcode barcode);
+        void onIsbnDetected(List<FirebaseVisionBarcode> barcode);
         void onMultipleIsbnDetected(List<FirebaseVisionBarcode> barcodes);
     }
 
@@ -111,22 +104,26 @@ public class CameraPreviewActivity extends AppCompatActivity {
             CustomPreviewCallback camCallback = new CustomPreviewCallback(CameraView.PREVIEW_WIDTH, CameraView.PREVIEW_HEIGHT);
             camCallback.setBarcodeDetectedListener(new OnBarcodeListener() {
                 @Override
-                public void onIsbnDetected(FirebaseVisionBarcode barcode) {
+                public void onIsbnDetected(final List<FirebaseVisionBarcode> barcodes) {
+
+                    if (!processFrame)
+                        return;
+
+                    if (barcodes.isEmpty())
+                        return;
 
                     int[] l = new int[2];
                     mDetectionBox.getLocationOnScreen(l);
 
-                    //For Bigger screen S9
-                    Rect rect = new Rect(l[0] + 10, l[1] - 220, l[0] + 700, l[1] + 200);
-
-                    overlay.setOverlay(fitOverlayRect(rect), barcode.getRawValue());
-                    overlay.invalidate();
-                    if(isViewContains(mDetectionBox, barcode.getBoundingBox())){
-                        Toast.makeText(CameraPreviewActivity.this, "Inside view", Toast.LENGTH_SHORT).show();
-                    }else {
-                        Toast.makeText(CameraPreviewActivity.this, "Outside view", Toast.LENGTH_SHORT).show();
+                    for (FirebaseVisionBarcode barcode : barcodes) {
+                        overlay.setOverlay(fitOverlayRect(barcode.getBoundingBox()), barcode.getRawValue());
+                        overlay.invalidate();
+                        if (isViewContains(mDetectionBox, barcode.getBoundingBox())) {
+                            Toast.makeText(CameraPreviewActivity.this, "Inside view", Toast.LENGTH_SHORT).show();
+                        }else {
+                            Toast.makeText(CameraPreviewActivity.this, "Outside view", Toast.LENGTH_SHORT).show();
+                        }
                     }
-
                 }
 
                 @Override
@@ -198,8 +195,8 @@ public class CameraPreviewActivity extends AppCompatActivity {
         int[] l = new int[2];
         view.getLocationOnScreen(l);
 
-        //For Bigger screen S9
-        Rect rect = new Rect(l[0] + 10, l[1] - 220, l[0] + 700, l[1] + 200);
+        //For Blackberry
+        Rect rect = new Rect(l[0] + 10, l[1] - 200, l[0] + 700, l[1] + 50);
 
         return rect.contains(detectedRect);
     }
@@ -315,11 +312,14 @@ public class CameraPreviewActivity extends AppCompatActivity {
 
         /** Start detector if camera preview shows */
         @Override public void onPreviewFrame(byte[] data, Camera camera) {
+            frameCount++;
             try {
+                if (frameCount % 2 == 0) {
+                    detector.detectInImage(FirebaseVisionImage.fromByteArray(data, metadata))
+                            .addOnSuccessListener(this)
+                            .addOnFailureListener(this);
+                }
 
-                detector.detectInImage(FirebaseVisionImage.fromByteArray(data, metadata))
-                        .addOnSuccessListener(this)
-                        .addOnFailureListener(this);
             } catch (Exception e) {
                 Log.d("CameraView", "parse error");
             }
@@ -329,21 +329,16 @@ public class CameraPreviewActivity extends AppCompatActivity {
         /** Barcode is detected successfully */
         @Override public void onSuccess(List<FirebaseVisionBarcode> barcodes) {
             // Task completed successfully
-            for (FirebaseVisionBarcode barcode: barcodes) {
-                Log.d("Barcode", "value : "+barcode.getRawValue());
-
-                mBarcodeDetectedListener.onIsbnDetected(barcode);
-                //mBarcodeDetectedListener.onMultipleIsbnDetected(barcodes);
-                return;
-
+            mBarcodeDetectedListener.onIsbnDetected(barcodes);
+            return;
             }
-        }
 
         /** Barcode is not recognized */
         @Override
         public void onFailure(@NonNull Exception e) {
-            // Task failed with an exception
             Log.i("Barcode", "read fail");
         }
     }
+
+
 }
